@@ -1,0 +1,126 @@
+# Shared config for the three app roles (api / worker / scheduler). They all run
+# the same image built from ./Dockerfile and differ only by `command`.
+# DATABASE_URL and REDIS_URL are overridden here to point at the compose service
+# names (db, redis); everything else (mail settings, throttles) comes from .env.
+x-app: &app
+  build: .
+  image: outreachforge:latest
+  env_file:
+    - .env
+  environment:
+    DATABASE_URL: postgresql://outreach:outreach@db:5432/outreach?schema=public
+    REDIS_URL: redis://redis:6379
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: outreach
+      POSTGRES_PASSWORD: outreach
+      POSTGRES_DB: outreach
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outreach"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: apply schema, then exit. Other app services wait for it to finish
+  # successfully. If migration files exist (prisma/migrations) it runs
+  # `migrate deploy`; on a fresh repo with none, it falls back to `db push`.
+  migrate:
+    <<: *app
+    command:
+      - sh
+      - -c
+      - >
+        if [ -d prisma/migrations ]; then npx prisma migrate deploy;
+        else npx prisma db push --skip-generate; fi
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    command: ["node", "dist/index.js"]
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    <<: *app
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  scheduler:
+    <<: *app
+    command: ["node", "dist/scheduler.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Web dashboard (nginx serving the built SPA, proxying /api to the api service).
+  # Opt in with:  docker compose --profile web up
+  web:
+    build: ./web
+    image: outreachforge-web:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    profiles:
+      - web
+    restart: unless-stopped
+
+  # Optional local mail catcher so you can inspect rendered messages in a UI
+  # without sending anything to real inboxes. Point SMTP_HOST=mailpit,
+  # SMTP_PORT=1025, MAIL_PROVIDER=smtp to use it.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI at http://localhost:8025
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

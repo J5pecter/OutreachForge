@@ -1,0 +1,159 @@
+// OutreachForge data model.
+//
+// Design principle: a lead cannot exist in a sendable state without a recorded
+// lawful basis for contact (consentBasis + consentSource + consentAt). The
+// sending path additionally refuses any address present in Suppression.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// The lawful basis on which we are permitted to contact a lead.
+/// There is deliberately no "scraped" or "guessed" option.
+enum ConsentBasis {
+  OPT_IN // person explicitly subscribed / requested contact
+  EXISTING_CUSTOMER // prior business relationship (soft opt-in)
+  CONTRACT // contact required to fulfil a contract
+  LEGITIMATE_INTEREST // documented LI assessment; must be defensible
+  IMPORTED_WITH_CONSENT // provided by a source that carries its own consent basis
+}
+
+enum LeadStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+  SUPPRESSED
+}
+
+enum CampaignStatus {
+  DRAFT
+  QUEUED
+  SENDING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum RecipientStatus {
+  PENDING
+  QUEUED
+  SENT
+  FAILED
+  BOUNCED
+  OPENED
+  UNSUBSCRIBED
+  SKIPPED_SUPPRESSED
+}
+
+enum SuppressionReason {
+  UNSUBSCRIBE
+  BOUNCE
+  COMPLAINT
+  MANUAL
+}
+
+model Lead {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  firstName String?
+  lastName  String?
+  company   String?
+  title     String?
+  status    LeadStatus @default(ACTIVE)
+
+  // Lawful basis for contact — required for a lead to be sendable.
+  consentBasis  ConsentBasis
+  consentSource String // free text: form name, contract id, list provenance, etc.
+  consentAt     DateTime
+  consentNote   String?
+
+  // Arbitrary merge fields available to templates (e.g. {"industry":"SaaS"}).
+  attributes Json @default("{}")
+
+  unsubscribedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  recipients CampaignRecipient[]
+
+  @@index([status])
+}
+
+model Suppression {
+  id        String            @id @default(cuid())
+  email     String            @unique
+  reason    SuppressionReason
+  note      String?
+  createdAt DateTime          @default(now())
+
+  @@index([reason])
+}
+
+model Campaign {
+  id       String         @id @default(cuid())
+  name     String
+  status   CampaignStatus @default(DRAFT)
+
+  fromName  String
+  fromEmail String
+  replyTo   String?
+
+  subjectTemplate String
+  bodyTemplate    String // HTML with {{token}} merge fields; unsubscribe appended automatically
+
+  // Optional LLM personalization. When enabled, a single fact-grounded sentence
+  // is generated per recipient and injected wherever the template uses {{ai}}.
+  aiEnabled Boolean @default(false)
+  aiPrompt  String? // operator instruction for what the {{ai}} sentence should say
+
+  throttlePerHour Int @default(200)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipients CampaignRecipient[]
+}
+
+model CampaignRecipient {
+  id         String          @id @default(cuid())
+  campaignId String
+  leadId     String
+  status     RecipientStatus @default(PENDING)
+
+  renderedSubject String?
+  renderedHtml    String?
+  aiSnippet       String? // the generated {{ai}} sentence, stored for review/audit
+  messageId       String?
+  error           String?
+
+  // Opaque token embedded in the unsubscribe link + tracking pixel.
+  token String @unique @default(cuid())
+
+  queuedAt DateTime?
+  sentAt   DateTime?
+  openedAt DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  events   Event[]
+
+  @@unique([campaignId, leadId])
+  @@index([status])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  recipientId String
+  type        String // sent | open | bounce | complaint | unsubscribe | error
+  meta        Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  recipient CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+}
