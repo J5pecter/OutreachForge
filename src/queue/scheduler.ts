@@ -54,7 +54,11 @@ export async function runDispatchTick(): Promise<{
   if (!isWithinSendWindow()) return { campaigns: 0, enqueued: 0, skipped: 'outside send window' };
 
   const active = await prisma.campaign.findMany({
-    where: { status: { in: ['QUEUED', 'SENDING'] } },
+    // Skip campaigns still awaiting mobile approval — they're released by tap.
+    where: {
+      status: { in: ['QUEUED', 'SENDING'] },
+      OR: [{ approvalRequired: false }, { approvedAt: { not: null } }],
+    },
     select: { id: true, throttlePerHour: true },
   });
 

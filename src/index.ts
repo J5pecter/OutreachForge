@@ -8,6 +8,7 @@ import { suppressionRouter } from './modules/suppression/suppression.routes';
 import { unsubscribeRouter } from './modules/suppression/unsubscribe.routes';
 import { webhooksRouter } from './modules/webhooks/webhooks.routes';
 import { trackingRouter } from './modules/webhooks/tracking.routes';
+import { approvalRouter } from './modules/approval/approval.routes';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/suppression', suppressionRouter);
 // Public endpoints live at the root so links stay short.
 app.use('/', unsubscribeRouter);
 app.use('/', trackingRouter);
+app.use('/', approvalRouter);
 
 // Central error handler.
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

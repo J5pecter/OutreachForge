@@ -27,6 +27,9 @@ export async function enqueueCampaign(
   if (!['QUEUED', 'SENDING'].includes(campaign.status)) {
     throw new HttpError(409, `Campaign is ${campaign.status}; queue it before dispatching`);
   }
+  if (campaign.approvalRequired && !campaign.approvedAt) {
+    throw new HttpError(409, 'Campaign is awaiting mobile approval — tap the approve link first.');
+  }
 
   const perHour = Math.min(campaign.throttlePerHour, config.policy.sendMaxPerHour);
   const intervalMs = spread ? Math.ceil(3_600_000 / perHour) : 0;

@@ -148,6 +148,9 @@ export const demoApi = {
     return wait({ status: c?.status ?? 'QUEUED', readyToSend });
   },
 
+  requestApproval: (_id: string) =>
+    wait({ approvalUrl: `${location.origin}/approve/demo-token`, notifiedVia: 'logged' }),
+
   dispatch: (id: string, max = 500) => {
     const c = campaigns.get(id);
     let enqueued = 0;

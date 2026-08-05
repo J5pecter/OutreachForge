@@ -113,6 +113,13 @@ model Campaign {
 
   throttlePerHour Int @default(200)
 
+  // Mobile approval gate: when required, dispatch (manual + scheduler) is
+  // blocked until someone taps the approve link, which sets approvedAt.
+  approvalRequired    Boolean   @default(false)
+  approvalToken       String?   @unique
+  approvalRequestedAt DateTime?
+  approvedAt          DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

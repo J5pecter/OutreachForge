@@ -10,6 +10,7 @@ import {
   getCampaignStats,
 } from './campaigns.service';
 import { enqueueCampaign } from '../sending/dispatcher';
+import { requestApproval } from '../approval/approval.service';
 
 export const campaignsRouter = Router();
 
@@ -69,6 +70,14 @@ campaignsRouter.post(
   asyncHandler(async (req, res) => {
     const { max } = z.object({ max: z.coerce.number().int().min(1).max(5000).default(500) }).parse(req.body ?? {});
     res.json(await enqueueCampaign(req.params.id, max));
+  }),
+);
+
+// Require mobile approval and send the approve link (Telegram/email/log).
+campaignsRouter.post(
+  '/:id/request-approval',
+  asyncHandler(async (req, res) => {
+    res.json(await requestApproval(req.params.id));
   }),
 );
 

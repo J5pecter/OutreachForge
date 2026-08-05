@@ -55,6 +55,8 @@ export type Campaign = {
   status: string;
   subjectTemplate: string;
   throttlePerHour: number;
+  approvalRequired?: boolean;
+  approvedAt?: string | null;
 };
 
 export type CampaignStats = {
@@ -101,6 +103,11 @@ const realApi = {
 
   queueCampaign: (id: string) =>
     request<{ status: string; readyToSend: number }>(`/campaigns/${id}/queue`, { method: 'POST' }),
+
+  requestApproval: (id: string) =>
+    request<{ approvalUrl: string; notifiedVia: string }>(`/campaigns/${id}/request-approval`, {
+      method: 'POST',
+    }),
 
   dispatch: (id: string, max = 500) =>
     request<{ enqueued: number; perHour: number; intervalMs: number; note?: string }>(

@@ -45,6 +45,7 @@ export function CampaignsPanel() {
   const audience = useMutation({ mutationFn: () => api.buildAudience(campaignId!), onSuccess: refresh });
   const render = useMutation({ mutationFn: () => api.renderCampaign(campaignId!), onSuccess: refresh });
   const queue = useMutation({ mutationFn: () => api.queueCampaign(campaignId!), onSuccess: refresh });
+  const approval = useMutation({ mutationFn: () => api.requestApproval(campaignId!), onSuccess: refresh });
   const dispatch = useMutation({ mutationFn: () => api.dispatch(campaignId!, 500), onSuccess: refresh });
 
   return (
@@ -134,8 +135,19 @@ export function CampaignsPanel() {
               />
               <Step
                 n="d"
+                label="Require mobile approval (optional)"
+                hint="Holds the send until you tap an approve link on your phone (Telegram/email)."
+                onRun={() => approval.mutate()}
+                pending={approval.isPending}
+                result={
+                  approval.data &&
+                  `link sent via ${approval.data.notifiedVia} — ${approval.data.approvalUrl}`
+                }
+              />
+              <Step
+                n="e"
                 label="Dispatch (enqueue up to 500)"
-                hint="Hands recipients to the send worker, paced per hour. Watch live status below."
+                hint="Hands recipients to the send worker, paced per hour. Blocked until approved if approval was requested."
                 onRun={() => dispatch.mutate()}
                 pending={dispatch.isPending}
                 result={

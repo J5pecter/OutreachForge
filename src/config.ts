@@ -80,6 +80,15 @@ export const config = {
     endHour: num('SEND_WINDOW_END_HOUR', 24),
   },
 
+  // Where the "approve on your phone" link is delivered. Telegram is the best
+  // mobile push (free, instant); email is a fallback. If neither is set, the
+  // link is just returned from the API + logged.
+  approval: {
+    telegramBotToken: str('TELEGRAM_BOT_TOKEN'),
+    telegramChatId: str('TELEGRAM_CHAT_ID'),
+    email: str('APPROVAL_EMAIL'),
+  },
+
   webhooks: {
     // Optional shared secret. When set, inbound ESP webhooks must present it as
     // ?token=... — an extra layer on top of signature verification below.
