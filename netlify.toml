@@ -1,0 +1,21 @@
+# Netlify hosts the dashboard SPA (web/). The backend (API + BullMQ worker +
+# scheduler + Postgres + Redis) cannot run on Netlify — host it separately and
+# set VITE_API_BASE if you want live data. By default the site builds in demo
+# mode (in-memory sample data) so the UI/UX is fully browsable on its own.
+
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Build the static demo. To point the UI at a real backend instead:
+  #   set VITE_DEMO = "false" and VITE_API_BASE = "https://your-api-host"
+  VITE_DEMO = "true"
+
+# SPA fallback: serve index.html for any client-side route.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

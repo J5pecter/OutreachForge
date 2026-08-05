@@ -278,6 +278,23 @@ npm run dev        # http://localhost:5173, proxies /api to :4000
 
 Run the backend (`npm run dev` at the repo root) alongside it.
 
+### Deploy the dashboard to Netlify
+
+Netlify hosts the **frontend only** — the backend (API + worker + scheduler +
+Postgres + Redis) is a long-running stack Netlify can't run. [`netlify.toml`](netlify.toml)
+builds `web/` in **demo mode** (`VITE_DEMO=true`): an in-memory sample dataset so
+the entire dashboard is browsable with no backend — import leads, compose,
+build audience, render, queue, dispatch, all simulated, nothing sent.
+
+Connect the repo in the Netlify UI (New site → Import from Git → pick this repo).
+Settings are auto-detected from `netlify.toml` (base `web`, publish `dist`,
+Node 20). First deploy is live in ~1 min.
+
+**To point the hosted UI at a real backend** instead of demo data: host the
+backend elsewhere (Render/Railway/Fly/a VM — anywhere that runs Node + Postgres
++ Redis), then in Netlify set `VITE_DEMO=false` and `VITE_API_BASE=https://your-api-host`,
+and enable CORS on the API for the Netlify origin.
+
 ## Roadmap (not yet built)
 
 - Per-recipient timezone-aware send windows (currently server-local)

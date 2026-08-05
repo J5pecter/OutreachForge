@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IS_DEMO } from './api';
 import { LeadsPanel } from './panels/LeadsPanel';
 import { CampaignsPanel } from './panels/CampaignsPanel';
 import { SuppressionPanel } from './panels/SuppressionPanel';
@@ -16,6 +17,12 @@ export default function App() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
+      {IS_DEMO && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+          <strong>Demo mode.</strong> Sample data, no live backend — nothing is sent. Explore the
+          full flow: import leads, compose a campaign, build audience, render, queue, and dispatch.
+        </div>
+      )}
       <header className="mb-8">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white">

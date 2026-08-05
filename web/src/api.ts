@@ -1,6 +1,12 @@
 // Thin typed fetch wrapper around the OutreachForge API.
+import { demoApi } from './demo';
 
-const BASE = '/api';
+// Demo mode (VITE_DEMO=true) swaps the real fetch client for an in-memory one,
+// so the UI is fully browsable when hosted without a backend (e.g. Netlify).
+export const IS_DEMO = import.meta.env.VITE_DEMO === 'true';
+
+// Optional external backend origin; empty = same-origin (dev proxy / nginx).
+const BASE = `${import.meta.env.VITE_API_BASE ?? ''}/api`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -56,7 +62,7 @@ export type CampaignStats = {
   byStatus: Record<string, number>;
 };
 
-export const api = {
+const realApi = {
   listLeads: (status?: string) =>
     request<{ leads: Lead[]; nextCursor: string | null }>(
       `/leads${status ? `?status=${status}` : ''}`,
@@ -111,3 +117,7 @@ export const api = {
       body: JSON.stringify({ email, reason }),
     }),
 };
+
+// The cast makes demoApi conform to the real client's exact signatures — any
+// drift between the two becomes a compile error here rather than a runtime gap.
+export const api: typeof realApi = IS_DEMO ? (demoApi as typeof realApi) : realApi;
