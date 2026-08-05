@@ -98,7 +98,7 @@ class GeminiProvider implements PersonalizationProvider {
   constructor(private apiKey: string) {}
 
   async generate(input: PersonalizeInput): Promise<string> {
-    const model = config.ai.model || 'gemini-1.5-flash';
+    const model = config.ai.model || 'gemini-flash-latest';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), config.ai.timeoutMs);
@@ -110,7 +110,13 @@ class GeminiProvider implements PersonalizationProvider {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: [{ role: 'user', parts: [{ text: buildUserContent(input) }] }],
-          generationConfig: { maxOutputTokens: config.ai.maxTokens, temperature: 0.4 },
+          // Gemini 2.5 "flash" thinks by default (~700 hidden tokens), so give
+          // a floor of 1024 output tokens or the visible sentence gets
+          // truncated. thinkingConfig isn't accepted here, so we budget instead.
+          generationConfig: {
+            maxOutputTokens: Math.max(config.ai.maxTokens, 1024),
+            temperature: 0.4,
+          },
         }),
       });
       if (!res.ok) {
