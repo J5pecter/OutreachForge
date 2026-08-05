@@ -1,4 +1,5 @@
 import { prisma } from '../../db';
+import { render } from '../../lib/template';
 import { getMailProvider } from './provider';
 import {
   htmlToText,
@@ -8,6 +9,8 @@ import {
   withTextFooter,
 } from './compliance';
 import { isSuppressed } from '../suppression/suppression.service';
+
+const OPTIONAL_TOKENS = ['ai'];
 
 export type SendOutcome = {
   campaignId: string;
@@ -31,10 +34,10 @@ export async function sendOneRecipient(recipientId: string): Promise<SendOutcome
   if (!r) return { campaignId: '', status: 'ALREADY_HANDLED' };
   if (r.status !== 'QUEUED') return { campaignId: r.campaignId, status: 'ALREADY_HANDLED' };
 
-  if (!r.renderedHtml || !r.renderedSubject) {
+  if (!r.preparedAt) {
     await prisma.campaignRecipient.update({
       where: { id: r.id },
-      data: { status: 'FAILED', error: 'Recipient was not rendered before dispatch' },
+      data: { status: 'FAILED', error: 'Recipient was not prepared before dispatch' },
     });
     return { campaignId: r.campaignId, status: 'FAILED' };
   }
@@ -44,21 +47,37 @@ export async function sendOneRecipient(recipientId: string): Promise<SendOutcome
     return { campaignId: r.campaignId, status: 'SKIPPED_SUPPRESSED' };
   }
 
+  // Render the final subject/body here from the campaign template + lead +
+  // stored aiSnippet — nothing rendered is persisted per recipient.
+  const ctx = {
+    firstName: r.lead.firstName ?? '',
+    lastName: r.lead.lastName ?? '',
+    company: r.lead.company ?? '',
+    title: r.lead.title ?? '',
+    email: r.lead.email,
+    attributes: (r.lead.attributes as Record<string, unknown>) ?? {},
+    ai: r.aiSnippet ?? '',
+  };
+  const subject = render(r.campaign.subjectTemplate, ctx, { html: false, strict: true, optional: OPTIONAL_TOKENS });
+  const bodyHtml = render(r.campaign.bodyTemplate, ctx, { html: true, strict: true, optional: OPTIONAL_TOKENS });
+
   const senderNote = `${r.campaign.fromName} contacted you`;
-  const html = withOpenPixel(withHtmlFooter(r.renderedHtml, r.token, senderNote), r.token);
-  const text = withTextFooter(htmlToText(r.renderedHtml), r.token, senderNote);
+  const html = withOpenPixel(withHtmlFooter(bodyHtml, r.token, senderNote), r.token);
+  const text = withTextFooter(htmlToText(bodyHtml), r.token, senderNote);
 
   // Provider exceptions intentionally bubble up to the worker for retry.
   const result = await getMailProvider().send({
     to: r.lead.email,
     from: `${r.campaign.fromName} <${r.campaign.fromEmail}>`,
     replyTo: r.campaign.replyTo ?? undefined,
-    subject: r.renderedSubject,
+    subject,
     html,
     text,
     headers: listUnsubscribeHeaders(r.token),
   });
 
+  // No per-send "sent" event row — status + sentAt already capture it. Events
+  // are reserved for opens/bounces/complaints/unsubscribes (real analytics).
   await prisma.campaignRecipient.update({
     where: { id: r.id },
     data: {
@@ -66,7 +85,6 @@ export async function sendOneRecipient(recipientId: string): Promise<SendOutcome
       messageId: result.messageId,
       sentAt: new Date(),
       error: result.accepted ? null : 'Provider did not accept the message',
-      events: { create: { type: 'sent', meta: { messageId: result.messageId } } },
     },
   });
 

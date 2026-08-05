@@ -32,7 +32,7 @@ export async function enqueueCampaign(
   const intervalMs = spread ? Math.ceil(3_600_000 / perHour) : 0;
 
   const pending = await prisma.campaignRecipient.findMany({
-    where: { campaignId, status: 'PENDING', renderedHtml: { not: null } },
+    where: { campaignId, status: 'PENDING', preparedAt: { not: null } },
     select: { id: true },
     take: max,
     orderBy: { id: 'asc' },

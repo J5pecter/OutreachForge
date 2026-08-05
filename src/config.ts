@@ -41,13 +41,18 @@ export const config = {
     url: str('REDIS_URL', 'redis://localhost:6379'),
   },
 
+  // Personalization provider auto-selected from whichever key is set:
+  // Gemini (free tier) → Anthropic → none (template-only, {{ai}} renders empty).
+  // AI_MODEL overrides the per-provider default model.
   ai: {
-    // Personalization is enabled only when an API key is present. Without one,
-    // campaigns that reference {{ai}} fall back to template-only (empty snippet).
-    apiKey: str('ANTHROPIC_API_KEY'),
-    model: str('AI_MODEL', 'claude-opus-4-8'),
+    provider: (str('GEMINI_API_KEY') ? 'gemini' : str('ANTHROPIC_API_KEY') ? 'anthropic' : 'none') as
+      | 'gemini'
+      | 'anthropic'
+      | 'none',
+    geminiKey: str('GEMINI_API_KEY'),
+    anthropicKey: str('ANTHROPIC_API_KEY'),
+    model: str('AI_MODEL'), // empty → provider default
     maxTokens: num('AI_MAX_TOKENS', 160),
-    // How many recipients to personalize concurrently during render.
     concurrency: num('AI_CONCURRENCY', 5),
     timeoutMs: num('AI_TIMEOUT_MS', 20_000),
   },

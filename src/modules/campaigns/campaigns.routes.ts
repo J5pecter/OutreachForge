@@ -52,9 +52,9 @@ campaignsRouter.post(
     const campaign = await prisma.campaign.findUnique({ where: { id: req.params.id } });
     if (!campaign) throw new HttpError(404, 'Campaign not found');
     const ready = await prisma.campaignRecipient.count({
-      where: { campaignId: campaign.id, status: 'PENDING', renderedHtml: { not: null } },
+      where: { campaignId: campaign.id, status: 'PENDING', preparedAt: { not: null } },
     });
-    if (ready === 0) throw new HttpError(422, 'No rendered recipients. Build audience and render first.');
+    if (ready === 0) throw new HttpError(422, 'No prepared recipients. Build audience and render first.');
     const updated = await prisma.campaign.update({ where: { id: campaign.id }, data: { status: 'QUEUED' } });
     res.json({ status: updated.status, readyToSend: ready });
   }),

@@ -125,11 +125,12 @@ model CampaignRecipient {
   leadId     String
   status     RecipientStatus @default(PENDING)
 
-  renderedSubject String?
-  renderedHtml    String?
-  aiSnippet       String? // the generated {{ai}} sentence, stored for review/audit
-  messageId       String?
-  error           String?
+  // Rendered subject/HTML are NOT stored — they're rebuilt at send time from the
+  // campaign template + lead + aiSnippet, which keeps per-recipient rows tiny.
+  aiSnippet  String? // the generated {{ai}} sentence (kept so AI isn't re-run at send)
+  preparedAt DateTime? // set once personalized + template-validated; gates dispatch
+  messageId  String?
+  error      String?
 
   // Opaque token embedded in the unsubscribe link + tracking pixel.
   token String @unique @default(cuid())

@@ -102,7 +102,7 @@ export async function renderCampaign(campaignId: string) {
   if (!campaign) throw new HttpError(404, 'Campaign not found');
 
   const recipients = await prisma.campaignRecipient.findMany({
-    where: { campaignId, status: { in: ['PENDING', 'FAILED'] } },
+    where: { campaignId, status: { in: ['PENDING', 'FAILED'] }, preparedAt: null },
     include: { lead: true },
   });
 
@@ -146,12 +146,14 @@ export async function renderCampaign(campaignId: string) {
           ai: aiSnippet,
         };
 
-        const subject = render(campaign.subjectTemplate, ctx, { html: false, strict: true, optional: OPTIONAL_TOKENS });
-        const html = render(campaign.bodyTemplate, ctx, { html: true, strict: true, optional: OPTIONAL_TOKENS });
+        // Validate the templates render cleanly now (catches errors before
+        // send) — but don't store the output; the worker rebuilds it at send.
+        render(campaign.subjectTemplate, ctx, { html: false, strict: true, optional: OPTIONAL_TOKENS });
+        render(campaign.bodyTemplate, ctx, { html: true, strict: true, optional: OPTIONAL_TOKENS });
 
         await prisma.campaignRecipient.update({
           where: { id: r.id },
-          data: { renderedSubject: subject, renderedHtml: html, aiSnippet: aiSnippet || null, status: 'PENDING' },
+          data: { aiSnippet: aiSnippet || null, preparedAt: new Date(), status: 'PENDING' },
         });
         rendered += 1;
       } catch (err) {
