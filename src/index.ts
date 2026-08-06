@@ -13,6 +13,13 @@ import { webhooksRouter } from './modules/webhooks/webhooks.routes';
 import { trackingRouter } from './modules/webhooks/tracking.routes';
 import { approvalRouter } from './modules/approval/approval.routes';
 
+// Keep the web server alive through background (worker/Redis) hiccups instead
+// of letting an unhandled rejection kill the whole process.
+process.on('unhandledRejection', (reason) => {
+  // eslint-disable-next-line no-console
+  console.error('unhandledRejection:', reason);
+});
+
 const app = express();
 
 if (config.corsOrigin) app.use(cors(config.corsOrigin));
@@ -60,8 +67,16 @@ app.listen(config.port, () => {
 // Single-service deploys (e.g. Render free tier) run the worker + scheduler in
 // this same process instead of as separate services.
 if (config.runWorkerInProcess) {
-  createSendWorker();
-  void registerAutoDispatch().then(() => createSchedulerWorker());
-  // eslint-disable-next-line no-console
-  console.log('in-process send worker + auto-dispatch scheduler started');
+  try {
+    createSendWorker();
+    registerAutoDispatch()
+      .then(() => createSchedulerWorker())
+      // A Redis/scheduler startup problem must not take down the API.
+      .catch((err) => console.error('[scheduler] startup failed (API stays up):', (err as Error).message));
+    // eslint-disable-next-line no-console
+    console.log('in-process send worker + auto-dispatch scheduler started');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[worker] startup failed (API stays up):', (err as Error).message);
+  }
 }

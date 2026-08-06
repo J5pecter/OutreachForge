@@ -42,6 +42,11 @@ export function createSendWorker(): Worker<SendJob> {
     // eslint-disable-next-line no-console
     console.error(`[send-worker] job ${job?.id} failed: ${err.message}`);
   });
+  // Swallow connection-level errors (an unhandled 'error' event would throw).
+  worker.on('error', (err) => {
+    // eslint-disable-next-line no-console
+    console.error('[send-worker] error:', err.message);
+  });
 
   return worker;
 }

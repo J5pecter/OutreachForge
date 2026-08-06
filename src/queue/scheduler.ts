@@ -85,6 +85,10 @@ export function createSchedulerWorker(): Worker {
   const worker = new Worker(SCHEDULER_QUEUE_NAME, async () => runDispatchTick(), {
     connection: createRedis(),
   });
+  worker.on('error', (err) => {
+    // eslint-disable-next-line no-console
+    console.error('[scheduler] error:', err.message);
+  });
   worker.on('completed', (_job, result) => {
     if (result && (result.enqueued > 0 || result.skipped)) {
       // eslint-disable-next-line no-console
