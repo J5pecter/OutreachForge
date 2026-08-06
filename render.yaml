@@ -21,6 +21,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Force npm to install devDependencies (tsc/tsx) even though Render sets
+      # NODE_ENV=production — otherwise `npm run build` has no compiler.
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: RUN_WORKER_IN_PROCESS
         value: "true"
       - key: MAIL_PROVIDER
