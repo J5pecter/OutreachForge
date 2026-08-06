@@ -1,5 +1,9 @@
 # OutreachForge
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/J5pecter/OutreachForge)
+
+One-click backend deploy (free tier) — see [Deploy the backend to Render](#deploy-the-backend-to-render-free) for the env vars to paste.
+
 A **consent-based** outreach & CRM backend. It imports leads that carry a
 recorded lawful basis for contact, personalizes messages honestly, and sends
 them through an authenticated relay with suppression and one-click unsubscribe
