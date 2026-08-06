@@ -14,9 +14,11 @@ services:
     region: singapore
     # --include=dev: Render sets NODE_ENV=production, which would otherwise make
     # npm skip devDependencies (typescript/tsx/@types) and break the build.
-    buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    # Retry db push so a cold Neon (free tier auto-suspends) gets a moment to wake.
-    startCommand: sh -c 'for i in 1 2 3; do npx prisma db push --skip-generate --accept-data-loss && break; echo "db not ready, retrying..."; sleep 6; done && node dist/index.js'
+    # Schema sync (db push) runs at BUILD time: a stalled DB call there fails the
+    # deploy visibly instead of hanging the START command so the server never boots.
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build && npx prisma db push --skip-generate --accept-data-loss
+    # Start must be instant + dependency-free so Render detects the open port.
+    startCommand: node dist/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
