@@ -19,6 +19,10 @@ process.on('unhandledRejection', (reason) => {
   // eslint-disable-next-line no-console
   console.error('unhandledRejection:', reason);
 });
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('uncaughtException (kept alive):', err);
+});
 
 const app = express();
 
