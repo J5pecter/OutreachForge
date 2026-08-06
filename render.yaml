@@ -12,8 +12,11 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npx prisma db push --skip-generate --accept-data-loss && node dist/index.js
+    # --include=dev: Render sets NODE_ENV=production, which would otherwise make
+    # npm skip devDependencies (typescript/tsx/@types) and break the build.
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    # Retry db push so a cold Neon (free tier auto-suspends) gets a moment to wake.
+    startCommand: sh -c 'for i in 1 2 3; do npx prisma db push --skip-generate --accept-data-loss && break; echo "db not ready, retrying..."; sleep 6; done && node dist/index.js'
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
@@ -25,7 +28,7 @@ services:
       - key: AI_MODEL
         value: gemini-flash-latest
       # Secrets / per-env — Render prompts for these (never stored in the repo):
-      - key: DATABASE_URL # your Neon connection string
+      - key: DATABASE_URL # Neon — use the DIRECT host (no "-pooler"); pooled/pgBouncer breaks `prisma db push`
         sync: false
       - key: REDIS_URL # your Upstash rediss:// URL
         sync: false
