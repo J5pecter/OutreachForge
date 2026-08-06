@@ -291,9 +291,28 @@ Settings are auto-detected from `netlify.toml` (base `web`, publish `dist`,
 Node 20). First deploy is live in ~1 min.
 
 **To point the hosted UI at a real backend** instead of demo data: host the
-backend elsewhere (Render/Railway/Fly/a VM — anywhere that runs Node + Postgres
-+ Redis), then in Netlify set `VITE_DEMO=false` and `VITE_API_BASE=https://your-api-host`,
-and enable CORS on the API for the Netlify origin.
+backend (see below), then in Netlify set `VITE_DEMO=false` and
+`VITE_API_BASE=https://your-api-host`.
+
+### Deploy the backend to Render (free)
+
+[`render.yaml`](render.yaml) deploys the API as one **free web service** that
+also runs the send worker + scheduler **in-process** (`RUN_WORKER_IN_PROCESS=true`)
+— Render's free tier has no standalone workers. It reuses your existing
+**Neon** (Postgres) and **Upstash** (Redis); no Render DB/Redis needed.
+
+1. Render → **New → Blueprint** → pick this repo → **Apply**.
+2. When prompted, paste: `DATABASE_URL` (Neon), `REDIS_URL` (Upstash `rediss://`),
+   `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+3. After the first deploy, set `PUBLIC_BASE_URL` to the service URL
+   (`https://outreachforge-api.onrender.com`) and `CORS_ORIGIN` to your Netlify
+   origin, then redeploy.
+4. In Netlify, set `VITE_DEMO=false` and `VITE_API_BASE` to the Render URL.
+
+Now Telegram approval links + AI generation work from a normal network (not
+behind a corporate proxy). **Caveat:** free Render web services spin down after
+~15 min idle (a request — e.g. tapping the approve link — wakes them, ~50s cold
+start); for always-on sending, use a paid instance or separate worker service.
 
 ## Roadmap (not yet built)
 

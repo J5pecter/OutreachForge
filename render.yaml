@@ -1,0 +1,42 @@
+# Render blueprint — deploys the backend as ONE free web service that also runs
+# the send worker + auto-dispatch scheduler in-process (Render's free tier has
+# no standalone background workers). Reuses your existing Neon (Postgres) and
+# Upstash (Redis) — paste those + your keys when Render prompts (sync: false).
+#
+# Deploy: Render Dashboard → New → Blueprint → pick this repo → fill the
+# prompted env vars → Apply. After first deploy, set PUBLIC_BASE_URL and
+# CORS_ORIGIN (below) to the real URLs and redeploy.
+services:
+  - type: web
+    name: outreachforge-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma db push --skip-generate --accept-data-loss && node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: RUN_WORKER_IN_PROCESS
+        value: "true"
+      - key: MAIL_PROVIDER
+        value: dryrun
+      - key: AI_MODEL
+        value: gemini-flash-latest
+      # Secrets / per-env — Render prompts for these (never stored in the repo):
+      - key: DATABASE_URL # your Neon connection string
+        sync: false
+      - key: REDIS_URL # your Upstash rediss:// URL
+        sync: false
+      - key: GEMINI_API_KEY # free key from aistudio.google.com
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      # Set AFTER the first deploy to the real URLs, then redeploy:
+      - key: PUBLIC_BASE_URL # https://outreachforge-api.onrender.com
+        sync: false
+      - key: CORS_ORIGIN # your Netlify site origin, e.g. https://your-site.netlify.app
+        sync: false

@@ -41,6 +41,14 @@ export const config = {
     url: str('REDIS_URL', 'redis://localhost:6379'),
   },
 
+  // Run the send worker + scheduler inside the API process. Lets a single
+  // (free-tier) host run everything; for scale, run them as separate processes.
+  runWorkerInProcess: str('RUN_WORKER_IN_PROCESS', 'false') === 'true',
+
+  // Allowed browser origins for the API (the hosted dashboard). Comma-separated,
+  // or '*'. Empty = no CORS headers (same-origin only, e.g. the nginx setup).
+  corsOrigin: str('CORS_ORIGIN'),
+
   // Personalization provider auto-selected from whichever key is set:
   // Gemini (free tier) → Anthropic → none (template-only, {{ai}} renders empty).
   // AI_MODEL overrides the per-provider default model.

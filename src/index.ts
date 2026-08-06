@@ -2,6 +2,9 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { ZodError } from 'zod';
 import { config } from './config';
 import { HttpError } from './lib/http';
+import { cors } from './lib/cors';
+import { createSendWorker } from './queue/sendWorker';
+import { registerAutoDispatch, createSchedulerWorker } from './queue/scheduler';
 import { leadsRouter } from './modules/leads/leads.routes';
 import { campaignsRouter } from './modules/campaigns/campaigns.routes';
 import { suppressionRouter } from './modules/suppression/suppression.routes';
@@ -11,6 +14,8 @@ import { trackingRouter } from './modules/webhooks/tracking.routes';
 import { approvalRouter } from './modules/approval/approval.routes';
 
 const app = express();
+
+if (config.corsOrigin) app.use(cors(config.corsOrigin));
 
 // Webhooks must see the RAW request body for signature verification, so they
 // are mounted BEFORE express.json() (which would otherwise consume the stream).
@@ -51,3 +56,12 @@ app.listen(config.port, () => {
       (config.mail.provider === 'dryrun' ? ' (no mail will be sent)' : ''),
   );
 });
+
+// Single-service deploys (e.g. Render free tier) run the worker + scheduler in
+// this same process instead of as separate services.
+if (config.runWorkerInProcess) {
+  createSendWorker();
+  void registerAutoDispatch().then(() => createSchedulerWorker());
+  // eslint-disable-next-line no-console
+  console.log('in-process send worker + auto-dispatch scheduler started');
+}
