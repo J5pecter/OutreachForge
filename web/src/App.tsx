@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { IS_DEMO } from './api';
+import { QuickSendPanel } from './panels/QuickSendPanel';
 import { LeadsPanel } from './panels/LeadsPanel';
 import { CampaignsPanel } from './panels/CampaignsPanel';
 import { SuppressionPanel } from './panels/SuppressionPanel';
 
 const TABS = [
+  { key: 'send', label: 'Send' },
   { key: 'campaigns', label: 'Campaigns' },
   { key: 'leads', label: 'Leads' },
   { key: 'suppression', label: 'Suppression' },
@@ -13,7 +15,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key'];
 
 export default function App() {
-  const [tab, setTab] = useState<TabKey>('campaigns');
+  const [tab, setTab] = useState<TabKey>('send');
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -49,6 +51,7 @@ export default function App() {
         ))}
       </nav>
 
+      {tab === 'send' && <QuickSendPanel />}
       {tab === 'campaigns' && <CampaignsPanel />}
       {tab === 'leads' && <LeadsPanel />}
       {tab === 'suppression' && <SuppressionPanel />}

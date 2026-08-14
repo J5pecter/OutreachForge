@@ -12,6 +12,7 @@ import { unsubscribeRouter } from './modules/suppression/unsubscribe.routes';
 import { webhooksRouter } from './modules/webhooks/webhooks.routes';
 import { trackingRouter } from './modules/webhooks/tracking.routes';
 import { approvalRouter } from './modules/approval/approval.routes';
+import { quickSendRouter } from './modules/quicksend/quicksend.routes';
 
 // Keep the web server alive through background (worker/Redis) hiccups instead
 // of letting an unhandled rejection kill the whole process.
@@ -41,6 +42,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/leads', leadsRouter);
 app.use('/api/campaigns', campaignsRouter);
 app.use('/api/suppression', suppressionRouter);
+app.use('/api/quick-send', quickSendRouter);
 
 // Public endpoints live at the root so links stay short.
 app.use('/', unsubscribeRouter);

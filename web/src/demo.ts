@@ -151,6 +151,21 @@ export const demoApi = {
   requestApproval: (_id: string) =>
     wait({ approvalUrl: `${location.origin}/approve/demo-token`, notifiedVia: 'logged' }),
 
+  quickSend: (body: { emails: string[]; subject: string; body: string; consented: boolean }) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const uniq = [...new Set(body.emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+    const valid = uniq.filter((e) => re.test(e));
+    const invalid = uniq.filter((e) => !re.test(e));
+    const skippedSuppressed = valid.filter((e) => isSuppressed(e)).length;
+    return wait({
+      queued: valid.length - skippedSuppressed,
+      perHour: 200,
+      invalid,
+      skippedSuppressed,
+      renderErrors: [] as { email: string; message: string }[],
+    });
+  },
+
   dispatch: (id: string, max = 500) => {
     const c = campaigns.get(id);
     let enqueued = 0;

@@ -109,6 +109,16 @@ const realApi = {
       method: 'POST',
     }),
 
+  quickSend: (body: { emails: string[]; subject: string; body: string; consented: boolean }) =>
+    request<{
+      queued: number;
+      perHour?: number;
+      invalid: string[];
+      skippedSuppressed: number;
+      renderErrors?: { email: string; message: string }[];
+      note?: string;
+    }>('/quick-send', { method: 'POST', body: JSON.stringify(body) }),
+
   dispatch: (id: string, max = 500) =>
     request<{ enqueued: number; perHour: number; intervalMs: number; note?: string }>(
       `/campaigns/${id}/dispatch`,
